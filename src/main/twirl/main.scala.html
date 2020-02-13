@@ -1,0 +1,22 @@
+@(resources: List[String])(content: Html)
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Title</title>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" crossorigin="anonymous">
+        <link href="/web/css/main.css" rel="stylesheet">
+        @for(res <- resources.filter(_.endsWith(".css"))) {
+            <link href="@res" rel="stylesheet">
+            }
+        </head>
+    <body>
+        @content
+        <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+        <script src="https://unpkg.com/popper.js" crossorigin="anonymous"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" crossorigin="anonymous"></script>
+        <script src="/web/js/main.js"></script>
+        @for(res <- resources.filter(_.endsWith(".js"))) {
+            <script src="@res"></script>
+        }
+    </body>
+</html>
