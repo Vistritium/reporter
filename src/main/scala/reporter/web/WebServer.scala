@@ -2,7 +2,7 @@ package reporter.web
 
 import java.lang.reflect.Modifier
 
-import akka.actor.ActorSystem
+import akka.actor.typed.ActorSystem
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives._
 import com.google.inject.{Inject, Injector, Singleton}
@@ -11,17 +11,24 @@ import com.typesafe.scalalogging.LazyLogging
 import org.reflections.Reflections
 import org.reflections.scanners.{SubTypesScanner, TypeAnnotationsScanner}
 import org.reflections.util.{ClasspathHelper, ConfigurationBuilder}
+import reporter.AppSupervisor
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
+import akka.actor.typed.scaladsl.adapter._
+import akka.http.scaladsl.server.Route
+import akka.stream.ActorMaterializer
 
 @Singleton
 class WebServer @Inject()(
   implicit val executionContext: ExecutionContext,
-  implicit val actorSystem: ActorSystem,
+  val actorSystem: ActorSystem[AppSupervisor.Command],
   config: Config,
   injector: Injector,
 ) extends LazyLogging {
+
+  private implicit val classic = actorSystem.toClassic
+  private implicit val materialize = ActorMaterializer()
 
   private val controllers: List[Controller] = {
     val reflections = new Reflections(new ConfigurationBuilder()
@@ -38,7 +45,7 @@ class WebServer @Inject()(
 
   private val bindingFuture: Unit = {
     val port: Int = config.getInt("web.port")
-    Http().bindAndHandle(route, "0.0.0.0", port)
+    Http().bindAndHandle(Route.handlerFlow( route), "0.0.0.0", port)
     logger.info(s"Server started on port $port")
   }
 }

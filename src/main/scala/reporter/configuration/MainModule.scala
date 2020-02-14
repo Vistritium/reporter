@@ -1,6 +1,6 @@
 package reporter.configuration
 
-import akka.actor.ActorSystem
+import akka.actor.typed.ActorSystem
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, SerializationFeature}
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
@@ -9,6 +9,7 @@ import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import net.codingwell.scalaguice.ScalaModule
 import org.reflections.Reflections
+import reporter.AppSupervisor
 
 import scala.concurrent.ExecutionContext
 
@@ -45,7 +46,7 @@ class MainModule(config: Config) extends ScalaModule with LazyLogging {
 
   @Provides
   @Singleton
-  def executionContext(actorSystem: ActorSystem): ExecutionContext = actorSystem.dispatcher
+  def executionContext(actorSystem: ActorSystem[AppSupervisor.Command]): ExecutionContext = actorSystem.executionContext
 
 
 

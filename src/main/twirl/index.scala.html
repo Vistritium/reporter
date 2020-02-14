@@ -1,5 +1,12 @@
+@import reporter.excel.Metadata
+@(metadatas: List[Metadata])
 @main(List.empty) {
 
-    <h1>Hello from twirl</h1>
+    <ul>
+    @for(metadata <- metadatas) {
+        <a href="/excel/@metadata.name">@metadata.name</a>
+    }
+    </ul>
+
 
 }

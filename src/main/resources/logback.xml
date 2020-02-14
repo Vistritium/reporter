@@ -6,7 +6,8 @@
     </appender>
 
     <logger name="org.reflections.Reflections" level="WARN"/>
-    <logger name="reporter" level="DEBUG" />
+    <logger name="reporter" level="INFO"/>
+    <logger name="reporter.excel" level="INFO"/>
 
     <root level="info">
         <appender-ref ref="STDOUT"/>

@@ -28,8 +28,11 @@ libraryDependencies ++= Seq(
   "com.typesafe.slick" %% "slick" % "3.3.2",
   "com.lightbend.akka" %% "akka-stream-alpakka-slick" % "2.0.0-M2",
   "mysql" % "mysql-connector-java" % "8.0.19",
+  "org.postgresql" % "postgresql" % "42.2.10",
   "org.apache.poi" % "poi" % "4.1.1",
   "org.apache.poi" % "poi-ooxml" % "4.1.1",
+  "org.zeroturnaround" % "zt-zip" % "1.14",
+  "com.github.blemale" %% "scaffeine" % "3.1.0"
 )
 
 enablePlugins(SbtTwirl)

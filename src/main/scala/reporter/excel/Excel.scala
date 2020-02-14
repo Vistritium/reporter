@@ -1,10 +1,10 @@
 package reporter.excel
 
 import java.nio.file.{Files, Path}
-import java.util.Date
+import java.util.{Date, Objects}
 
 import akka.NotUsed
-import akka.actor.ActorSystem
+import akka.actor.typed.ActorSystem
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import com.google.inject.assistedinject.Assisted
@@ -14,8 +14,8 @@ import org.apache.poi.ss.SpreadsheetVersion
 import org.apache.poi.ss.usermodel.CellCopyPolicy
 import org.apache.poi.ss.util.{AreaReference, CellAddress, CellReference}
 import org.apache.poi.xssf.usermodel.{XSSFCell, XSSFRow, XSSFTableColumn, XSSFWorkbook}
-import reporter.datasource.{DateType, LocalDateTimeType, LocalTimeType, NumberType, SlickDataSourceFactory, StringType}
-import reporter.{QueryHelper, QueryMeta}
+import reporter.datasource.{DateType, LocalDate, LocalDateTimeType, LocalTimeType, NumberType, SlickDataSourceFactory, StringType}
+import reporter.{AppSupervisor, QueryHelper, QueryMeta}
 
 import scala.concurrent.duration._
 import collection.JavaConverters._
@@ -31,20 +31,10 @@ class Excel @Inject()(
   private implicit val executionContext: ExecutionContext,
   slickDataSourceFactory: SlickDataSourceFactory,
   queryHelper: QueryHelper,
-  private implicit val actorSystem: ActorSystem,
+  private implicit val actorSystem: ActorSystem[AppSupervisor.Command],
 ) extends LazyLogging {
 
   private val CopyPolicy = new CellCopyPolicy.Builder().build()
-
-  case class TableMeta(
-    tableName: String,
-    sheetName: String,
-    query: QueryMeta
-  )
-
-  case class Metadata(
-    tables: Seq[TableMeta]
-  )
 
   val metadata = {
     managed(new XSSFWorkbook(path.toFile)).acquireAndGet { wb =>
@@ -66,7 +56,8 @@ class Excel @Inject()(
             table.getSheetName,
             info
           )
-        }.toList
+        }.toList,
+        name
       )
     }
   }
@@ -79,9 +70,9 @@ class Excel @Inject()(
         val tmpSheet = wb.createSheet("______tmp_______")
 
         Source(metadata.tables.toList).zipWithIndex.mapAsync(1) { case (metaTable, tableI) =>
-          val query = metaTable.query.query(params)
-
-          val source = slickDataSourceFactory.get(metaTable.query.databaseName, query).source //TODO not closed
+          val query = metaTable.query.evaluate(params, queryHelper)
+          logger.info(s"[$name] Executing query ${query}")
+          val source = slickDataSourceFactory.get(metaTable.query.databaseName, query).source
 
           val sheet = wb.getSheet(metaTable.sheetName)
           val table = wb.getTable(metaTable.tableName)
@@ -102,10 +93,10 @@ class Excel @Inject()(
             val headerToPosition = header.zipWithIndex.toMap
             Await.result(source.headers, 3.seconds)
             table.getColumns.asScala.map { case column =>
-              val cell = sheet.getRow(getRow(0)).getCell(getCol(column.getColumnIndex))
+              val cell = sheet.getRow(getRow(0)).createCell(getCol(column.getColumnIndex))
               val tmpCell = tmpRow.createCell(getCol(column.getColumnIndex))
               tmpCell.copyCellFrom(cell, CopyPolicy)
-              if (cell.getCellComment != null) {
+              if (cell.getCellComment == null) {
                 FillColumn(headerToPosition
                   .getOrElse(
                     column.getName,
@@ -117,7 +108,7 @@ class Excel @Inject()(
             }.toList
           }
 
-          source.source.zipWithIndex.fold(0) { case (count, (resultRow, rowI)) =>
+          source.source.zipWithIndex.async.fold(0) { case (count, (resultRow, rowI)) =>
             val row = getRowHandle(getRow(rowI.toInt))
             columns.foreach { column =>
               val cell = row.createCell(getCol(column.column.getColumnIndex))
@@ -128,10 +119,17 @@ class Excel @Inject()(
                   logger.debug(s"Setting cell ${cell.getAddress} sheet ${sheet.getSheetName} value ${value}")
                   value match {
                     case StringType(s) => cell.setCellValue(s)
-                    case DateType(i) => cell.setCellValue(Date.from(i))
+                    case DateType(i) => cell.setCellValue(Option(i).map(i => Date.from(i)).orNull)
                     case LocalDateTimeType(i) => cell.setCellValue(i)
-                    case LocalTimeType(i) => cell.setCellValue(i.toString)
-                    case NumberType(d) => cell.setCellValue(d)
+                    case LocalTimeType(i) => cell.setCellValue(Option(i).map(_.toString).orNull)
+                    case NumberType(Some(d)) => cell.setCellValue(d)
+                    case NumberType(None) => cell.setBlank()
+                    case LocalDate(i) => {
+                      if (Objects.isNull(i))
+                        cell.setBlank()
+                      else
+                        cell.setCellValue(i)
+                    }
                   }
                 }
                 case CopyColumn(column, tmpCell) => {
@@ -171,7 +169,15 @@ class Excel @Inject()(
 
   private case class CopyColumn(override val column: XSSFTableColumn, override val tmpCell: XSSFCell) extends ColumnType(column, tmpCell)
 
-
 }
 
+case class TableMeta(
+  tableName: String,
+  sheetName: String,
+  query: QueryMeta
+)
 
+case class Metadata(
+  tables: Seq[TableMeta],
+  name: String
+)

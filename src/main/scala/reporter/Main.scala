@@ -11,7 +11,7 @@ object Main {
     val config = ConfigFactory.load()
     val injector = Guice.createInjector(new MainModule(config))
     injector.getInstance(classOf[Starter]).start()
-  //  injector.getInstance(classOf[WebServer])
+    injector.getInstance(classOf[WebServer])
   }
 
 }

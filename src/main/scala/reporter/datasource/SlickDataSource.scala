@@ -40,7 +40,7 @@ class SlickDataSource @Inject()(
       val resultRow = ResultRow((1 to r.numColumns).map { i =>
         getType(r, types(i))
       })
-      logger.info(s"Result row: ${resultRow}")
+      logger.debug(s"Result row: ${resultRow}")
       resultRow
     })
 
@@ -57,19 +57,19 @@ class SlickDataSource @Inject()(
 
   def getType(positionedResult: PositionedResult, columnType: Int): ExcelSupportedType = {
     columnType match {
-      case Types.BIT => StringType(if (positionedResult.nextInt() == 0) "false" else "true")
-      case Types.TINYINT => NumberType(positionedResult.nextInt())
-      case Types.SMALLINT => NumberType(positionedResult.nextInt())
-      case Types.INTEGER => NumberType(positionedResult.nextInt())
-      case Types.BIGINT => NumberType(positionedResult.nextLong())
-      case Types.FLOAT => NumberType(positionedResult.nextDouble())
-      case Types.REAL => NumberType(positionedResult.nextDouble())
-      case Types.DOUBLE => NumberType(positionedResult.nextDouble())
-      case Types.NUMERIC => NumberType(positionedResult.nextDouble())
-      case Types.DECIMAL => NumberType(positionedResult.nextDouble())
-      case Types.DATE => DateType(positionedResult.nextDate().toInstant)
-      case Types.TIMESTAMP => LocalDateTimeType(positionedResult.nextTimestamp().toLocalDateTime)
-      case Types.TIME => LocalTimeType(positionedResult.nextTime().toLocalTime)
+      case Types.BIT => StringType(positionedResult.nextIntOption().map(s => if (s == 0) "false" else "true").orNull)
+      case Types.TINYINT => NumberType(positionedResult.nextIntOption().map(_.toDouble))
+      case Types.SMALLINT => NumberType(positionedResult.nextIntOption().map(_.toDouble))
+      case Types.INTEGER => NumberType(positionedResult.nextIntOption().map(_.toDouble))
+      case Types.BIGINT => NumberType(positionedResult.nextLongOption().map(_.toDouble))
+      case Types.FLOAT => NumberType(positionedResult.nextDoubleOption())
+      case Types.REAL => NumberType(positionedResult.nextDoubleOption())
+      case Types.DOUBLE => NumberType(positionedResult.nextDoubleOption())
+      case Types.NUMERIC => NumberType(positionedResult.nextDoubleOption())
+      case Types.DECIMAL => NumberType(positionedResult.nextDoubleOption())
+      case Types.DATE => LocalDate(Option(positionedResult.nextDate()).map(_.toLocalDate).orNull)
+      case Types.TIMESTAMP => LocalDateTimeType(Option(positionedResult.nextTimestamp()).map(_.toLocalDateTime).orNull)
+      case Types.TIME => LocalTimeType(Option(positionedResult.nextTime()).map(_.toLocalTime).orNull)
       case _ => StringType(positionedResult.nextString())
     }
 

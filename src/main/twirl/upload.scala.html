@@ -1,0 +1,15 @@
+@(msg: Option[String])
+@main(List.empty) {
+
+    <form action="/excel" method="post"
+    enctype="multipart/form-data">
+        <label for="zippedExcels">Filename:</label>
+        <input type="file" name="zippedExcels" id="zippedExcels"><br>
+        <input type="submit" name="submit" value="Submit">
+    </form>
+    @if(msg.isDefined) {
+        <h1>@(msg.get)</h1>
+    }
+
+
+}

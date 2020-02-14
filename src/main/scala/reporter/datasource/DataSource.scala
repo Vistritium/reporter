@@ -21,7 +21,8 @@ case class StringType(s: String) extends ExcelSupportedType
 case class DateType(i: Instant) extends ExcelSupportedType
 case class LocalDateTimeType(i: LocalDateTime) extends ExcelSupportedType
 case class LocalTimeType(i: LocalTime) extends ExcelSupportedType
-case class NumberType(d: Double) extends ExcelSupportedType
+case class LocalDate(i: java.time.LocalDate) extends ExcelSupportedType
+case class NumberType(d: Option[Double]) extends ExcelSupportedType
 
 trait DataSource {
   def source: SourceContainer
